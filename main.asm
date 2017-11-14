@@ -1,7 +1,8 @@
 .data						#data declaration section
-	prompt: .asciiz "Enter a string: "
-	userInput: .space 9
-	errorMessage: .asciiz "\nInvalid hexadecimal number\n"
+	prompt: 	.asciiz "Enter a string: "
+	userInput: 	.space 9
+	errorMessage: 	.asciiz "\nInvalid hexadecimal number"
+	newLine:	.byte	10
 	
 .text						#assembly language instructions
 	main:
@@ -15,7 +16,9 @@
 		la $a0, userInput
 		li $a1, 9			#specifies the number of bytes to read
 		syscall
-
+		#calls the fucntion that prints a new line character
+		jal printNewLine
+		
 		#displays the input from the user (userInput)
 		li $v0, 4
 		la $a0, userInput
@@ -40,3 +43,10 @@
 		end:				 #this is where we start converting hexadecimal to decimal	
 	li $v0, 10
 	syscall					 #informs system to end main
+	
+	#prints a new line character 
+	printNewLine:
+		li $v0, 11 			
+		lb $a0, newLine
+		syscall
+		jr $ra	
