@@ -1,116 +1,150 @@
- .data						#data declaration section
-	prompt: 	.asciiz "Enter a string: "
+ .data							 #data declaration section
 	userInput: 	.space 9
-	errorMessage: 	.asciiz "\nInvalid hexadecimal number"
-	newLine:	.byte	10
-	endOfLine:	.byte	0
-	tempByte:	.byte	0
-	result:		.word	0
+	errorMessage: 	.asciiz "Invalid hexadecimal number"
 	
-.text						#assembly language instructions
+.text							 #assembly language instructions
 	main:
-		#dsiplays the prompt saying the user to input data
-		li $v0, 4 			#tells the system to be ready for printing string
-		la $a0, prompt          	#loads address of prompt to $a0
-		syscall				#prints the string
-		
 		#gets input from the user
-		li $v0, 8
-		la $a0, userInput
-		li $a1, 9			#specifies the number of bytes to read
+		li $v0, 8				 #system call for getting input from the user
+		la $a0, userInput			 #loads the address of userInput into $a0
+		li $a1, 9				 #specifies the number of bytes to read
 		syscall
-		#calls the fucntion that prints a new line character
-		jal printNewLine
 		
-		#displays the input from the user (userInput)
-		#li $v0, 4
-		#la $a0, userInput
-		#syscall
-	
 		#reading character in a string
-		la $t0, userInput
-		#li $t1, 0          		 #$t1 is set to 0
-		li $t3, 0			 #initializing sum to be 0
-		#li $t4, 0			 #loads content of result into $t4
+		la $s1, userInput			 
+		li $t3, 0				 #initializing sum to be 0
+		lb $t2, 0($s1)			 	 #loads the first character in userInput to $t2
+		beq $t2, 10, invalidMessage		 #if the first character is newLine, then go to invalidMessage
+		
+		#checks for spaces at the front and end of string and removes it
+		li $t6, 0				 #initializing $t7 to be 0
+		loopTempEnd:
+			add $t0, $s1, $t6
+			lb $t2, 0($t0)   	 	 #loads the first character in userInput to $t2
+			beq $t2, $zero, continue
+			li $s2, 10
+			beq $t2, $s2, continue
+			addi $t6, $t6, 1
+			j loopTempEnd		 	
+		#tempEnd is in $t6
+		
+		continue:
+		
+		li $s2, 0 
+		loopStartIndex:
+			add $t0, $s1, $s2
+			lb $t2, 0($t0)
+			bne $t2, ' ', loopEndIndex
+			addi $s2, $s2, 1
+			j loopStartIndex
+  
+  		#startIndex is in $s2
+  		
+  		loopEndIndex:
+  			add $t0, $s1, $t6
+			lb $t2, 0($t0)
+			bne $t2, ' ', continue1 
+			addi $t6, $t6, -1
+			j loopEndIndex
+		#endIndex is in $t6			 
+		
+		continue1:
+					
+			
+		#addi $t8, $zero, 0			 #initializing $t8 to be 0
 		loop:
-			lb $t2, 0($t0)   	 #loads the first character in userInput 
-			#Fix me 
-			beq $t2, $zero, Exit  	 #if current character in $t2 == $zero i.e the char code of endline
+			add $t0, $s1, $s2
+			lb $t2, 0($t0)   	 	 #loads the first character in userInput to $t2
+ 
+			#beq $t2, $zero, output 	 	 #if current character in $t2 == $zero i.e the char code of endline
+			#beq $t2, 10, output		 #if $t2 == newline character then go to signedToUnsigned
+
+			jal checkChar		 	 #calls the checkChar function
+			beq $v1, $zero, invalidMessage	 #calls Exit if the char is invalid
 			
-			li $v0, 11
-			sb $t2, tempByte	 #stores $t2 into temporary byte
-			lb $a2, tempByte	 #loads the character in temporary byte to $a0
-			syscall			 #prints the character
-		 	jal printNewLine
-			#move $a0, $t2
-			jal checkChar		 #calls the checkChar function
-			beq $v1, $zero, Exit	 #calls Exit if the char is invalid
-			jal conversion		 #calls conversion function to convert hex to dec
+			jal conversion		 	 #calls conversion function to convert hex to dec
 			
-			#-------------------------------------------------------------------------------------
-			#$v1 has the returning value of the function
-			#v1 has the decimal value of the hexadecimal character
-			sll $t3, $t3, 4
-			add $t3, $t3, $a2
-			sw $t3, result
-			#printing the decimal value
-			li $v0, 1
-			lw $a0, result
-			syscall
-			#----------------------------------------------------------------------------------------
+			sll $t3, $t3, 4		 	 #shifts $t3 left by 4 bits
+			add $t3, $t3, $t2	 	 #adds $t5 to $t3 and stores the result in $t3
+			addi $s2, $s2, 1		 #incrementing $t1 by 1
+			beq $s2, $t6, output
+			#add $t0, $t0, 1          	 #incremets the address to get next character #increment offset 
+			j loop 			 	 #loops again
 			
-			jal printNewLine	 #prints a new line
-			add $t0, $t0, 1          #incremets the address to get next character #increment offset 
-			# add $t1, $t1, 1	 #increments the value of $t1
-			j loop 			 #loops again
-		
 		Exit:	
-			li $v0, 10
-			syscall					 #informs system to end main
+			li $v0, 10			 
+			syscall				 #informs system to end program
 		
-	#prints a new line character 
-	printNewLine:
-		li $v0, 11 			
-		lb $a0, newLine
-		syscall
-		jr $ra	
+		#loop1:
+			#sll $t0, $t0, 1
+			#jr $ra
+			
+		#prints an error message
+		invalidMessage:
+			li $v0, 4			 #system call code for printing string
+			la $a0, errorMessage 		 #loads address of errorMessage to $a0
+			syscall				 #syscall to print
+			j Exit				 #jumps to Exit
+		
+					
+		#outputs the unsigned or signed decimal value to the screen
+		output:
+			blt $t3, $zero, signedToUnsigned #branch to signedToUnsigned if $t3 < $zero
+			li $v0, 1			 #syscall for printing integer
+			addi $a0, $t3, 0		 #adds contents of $t3 and 0 and stores in $a0
+			syscall
+			j Exit				 #jumps to Exit
+			
+			signedToUnsigned:
+				li $t1, 10			 #initiates $t1 = 10
+				divu $t3, $t1			 #divides $t4 by $t1
+				mflo $t2			 #contents of $LO are moved to $t2
+				move $a0, $t2 			 #moves contents of $a0 to $t2
+				li $v0, 1			 #system call code for printing integer
+				syscall
+
+				mfhi $t2			 #contents of $HI are moved to $t2
+				move $a0, $t2 			 #moves contents of $t2 to $a0
+				li $v0, 1			 #system call code for priting integer
+				syscall
+				j Exit
+		
 	#checks validity of the characters	
 	checkChar:
-		#sub $a0, $a0, 48		 #subtracting 48 from $a0 and storing the result in $a0
-		bgt $a2, 102, invalid		
-		bgt $a2, 96, valid
-		bgt $a2, 70, invalid
-		bgt $a2, 64, valid
-		bgt $a2, 57, invalid
-		bgt $a2, 47, valid
-		j invalid
-		#returns 0 if the character is invalid
-		invalid:
-			li $v1, 0
-			jr $ra
-		#returns 1 if the character is valid
-		valid:
-			li $v1, 1
-			jr $ra
-	#----------------------------------------------------------------------------------------------
-	#this function returns the decimal value of a hexadecimal number
-	conversion: 
-		blt $a2, 58, conv1
-		blt $a2, 71, conv2
-		blt $a2, 103, conv3
+		bgt $t2, 102, invalid		 	 #jumps to invalid if value at $t5 > 102
+		bgt $t2, 96, valid		 	 #jumps to valid if value at $t5 > 96
+		bgt $t2, 70, invalid		 	 #jumps to invalid if value at $t5 > 70
+		bgt $t2, 64, valid		 	 #jumps to valid if value at $t5 > 57
+		bgt $t2, 57, invalid		 	 #jumps to invalid if value at $t5 > 57
+		bgt $t2, 47, valid		 	 #jumps to valid if value at $t5 > 47
+		j invalid			 	 #jumps to invalid
 		
-		conv1:
-			addi $a2, $a2, -48
-			#move $a2, $v1		#addi
+		invalid:
+			li $v1, 0			 #initiates $v1 to be 0
 			jr $ra
 			
+		valid:
+			li $v1, 1			 #inititates $v1 to be 1
+			jr $ra
+			
+	#converts hexadecimal number to its decimal value
+	conversion: 
+		#addi $t6, $t6, 1			 
+		blt $t2, 58, conv1		 	 #branches to conv1 if value at $t5 < 58
+		blt $t2, 71, conv2		 	 #branches to conv2 if value at $t5 < 71
+		blt $t2, 103, conv3		 	 #branches to conv3 if value at $t5 < 103
+		
+		#converts hexadecimal values from 0-9 into decimal
+		conv1:
+			addi $t2, $t2, -48	 	 #adds -48 to  $t5 and stores it in $t5
+			jr $ra	 			 #jumps to statements whose address is $ra
+		
+		#converts hexadecimal values from A-F into decimal values	
 		conv2:
-			addi $a2, $a2, -55
-			#move $a2, $v1
+			addi $t2, $t2, -55	 	 #addis -55 to $t5 and stores it in $t5
 			jr $ra
+			
+		#converts hexadecimal values from a-f into decimal values
 		conv3:
-			addi $a2, $a2, -87
-			#move $a2, $v1
+			addi $t2, $t2, -87	 	 #adds -87 to $t5 and stores it in $t5
 			jr $ra
-		
-		
